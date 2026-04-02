@@ -1,3 +1,5 @@
+@use 'sass:color';
+
 $green: #5bcb7a;
 $red: #f06b6b;
 $grey: #a8b2bf;
@@ -74,11 +76,11 @@ $text-muted: rgba(26, 35, 50, 0.6);
     color: $text-dark;
 
     &--positive {
-      color: darken($green, 28%);
+      color: color.adjust($green, $lightness: -28%);
     }
 
     &--negative {
-      color: darken($red, 20%);
+      color: color.adjust($red, $lightness: -20%);
     }
   }
 
