@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { StockCardComponent } from '../stock-card/stock-card.component';
-import { AbstractStockService } from '../../services/abstract-stock.service';
+import { STOCK_SERVICE } from '../../interfaces/stock-service.token';
 
 @Component({
   selector: 'app-dashboard',
@@ -11,7 +11,7 @@ import { AbstractStockService } from '../../services/abstract-stock.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DashboardComponent {
-  private readonly stockService = inject(AbstractStockService);
+  private readonly stockService = inject(STOCK_SERVICE);
   readonly stocks = this.stockService.stocks;
   readonly connectionStatus = this.stockService.connectionStatus;
 

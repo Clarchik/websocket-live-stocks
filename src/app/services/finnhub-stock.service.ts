@@ -1,5 +1,7 @@
-import { Injectable, OnDestroy } from '@angular/core';
-import { BaseStockService, INITIAL_STOCKS } from './stock.service';
+import { Injectable, OnDestroy, inject, signal } from '@angular/core';
+import { StockService, ConnectionStatus } from '../interfaces/stock-service.token';
+import { StockStore, INITIAL_STOCKS } from '../stores/stock-store';
+import { WebSocketConnection, connectWithRetry } from '../utils/websocket-retry';
 
 interface FinnhubTrade {
   s: string; // symbol
@@ -18,45 +20,44 @@ const FINNHUB_WS_URL = `wss://ws.finnhub.io?token=${FINNHUB_API_TOKEN}`;
 const SYMBOLS = INITIAL_STOCKS.map((s) => s.quote.symbol);
 
 @Injectable()
-export class FinnhubStockService extends BaseStockService implements OnDestroy {
-  private ws: WebSocket | null = null;
+export class FinnhubStockService implements StockService, OnDestroy {
+  private readonly store = inject(StockStore);
+  private readonly connection: WebSocketConnection;
+
+  readonly stocks = this.store.stocks;
+
+  private readonly _connectionStatus = signal<ConnectionStatus>('connecting');
+  readonly connectionStatus = this._connectionStatus.asReadonly();
 
   constructor() {
-    super();
-    this.connect();
-  }
-
-  private connect(): void {
-    this.ws = new WebSocket(FINNHUB_WS_URL);
-
-    this.ws.onopen = () => {
-      this._connectionStatus.set('connected');
-      SYMBOLS.forEach((symbol) => this.ws!.send(JSON.stringify({ type: 'subscribe', symbol })));
-    };
-
-    this.ws.onmessage = ({ data }) => {
-      const msg = JSON.parse(data) as FinnhubMessage;
-      if (msg.type !== 'trade' || !msg.data?.length) return;
-      this.processTrades(msg.data);
-    };
-
-    this.ws.onerror = () => this._connectionStatus.set('error');
-
-    this.ws.onclose = () => this._connectionStatus.set('disconnected');
+    this.connection = connectWithRetry(FINNHUB_WS_URL, {
+      onOpen: () => {
+        this._connectionStatus.set('connected');
+        SYMBOLS.forEach((symbol) =>
+          this.connection.send(JSON.stringify({ type: 'subscribe', symbol })),
+        );
+      },
+      onMessage: (data) => {
+        const msg = JSON.parse(data) as FinnhubMessage;
+        if (msg.type !== 'trade' || !msg.data?.length) return;
+        this.processTrades(msg.data);
+      },
+      onRetrying: () => this._connectionStatus.set('connecting'),
+      onFailed: () => this._connectionStatus.set('error'),
+    });
   }
 
   private processTrades(trades: FinnhubTrade[]): void {
-    // Multiple trades can arrive per message — keep only the latest per symbol
     const latestBySymbol = new Map<string, FinnhubTrade>();
     for (const trade of trades) {
       latestBySymbol.set(trade.s, trade);
     }
 
     for (const [symbol, trade] of latestBySymbol) {
-      const stock = this._stocks().find((s) => s.quote.symbol === symbol);
+      const stock = this.store.stocks().find((s) => s.quote.symbol === symbol);
       if (!stock) continue;
 
-      this.applyUpdate({
+      this.store.applyUpdate({
         symbol,
         currentPrice: trade.p,
         dailyHigh: parseFloat(Math.max(stock.quote.dailyHigh, trade.p).toFixed(2)),
@@ -67,8 +68,14 @@ export class FinnhubStockService extends BaseStockService implements OnDestroy {
     }
   }
 
+  toggleStock(symbol: string): void {
+    this.store.toggleStock(symbol);
+  }
+
   ngOnDestroy(): void {
-    SYMBOLS.forEach((symbol) => this.ws?.send(JSON.stringify({ type: 'unsubscribe', symbol })));
-    this.ws?.close();
+    SYMBOLS.forEach((symbol) =>
+      this.connection.send(JSON.stringify({ type: 'unsubscribe', symbol })),
+    );
+    this.connection.destroy();
   }
 }
