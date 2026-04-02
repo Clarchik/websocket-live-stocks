@@ -1,0 +1,41 @@
+<p class="card__symbol">{{ stock().quote.symbol }}</p>
+<p class="card__name">{{ stock().quote.name }}</p>
+
+<p class="card__price">{{ stock().quote.currentPrice | currency:'USD':'symbol':'1.2-2' }}</p>
+
+<p class="card__change" [class.card__change--positive]="priceChange() >= 0" [class.card__change--negative]="priceChange() < 0">
+  {{ priceChange() >= 0 ? '+' : '' }}{{ priceChange() | number:'1.2-2' }}
+  ({{ priceChangePercent() | number:'1.2-2' }}%)
+</p>
+
+@if (stock().lastTradeTime) {
+  <div class="card__trade">
+    <span class="card__trade-label">Last Trade</span>
+    <span class="card__trade-time">{{ stock().lastTradeTime | date:'h:mm:ssa' }}</span>
+  </div>
+}
+
+<dl class="card__metrics">
+  <div class="card__metric">
+    <dt>Day High</dt>
+    <dd>{{ stock().quote.dailyHigh | currency:'USD':'symbol':'1.2-2' }}</dd>
+  </div>
+  <div class="card__metric">
+    <dt>Day Low</dt>
+    <dd>{{ stock().quote.dailyLow | currency:'USD':'symbol':'1.2-2' }}</dd>
+  </div>
+  <div class="card__metric card__metric--extended">
+    <dt>52W High</dt>
+    <dd>{{ stock().quote.weekHigh52 | currency:'USD':'symbol':'1.2-2' }}</dd>
+  </div>
+  <div class="card__metric card__metric--extended">
+    <dt>52W Low</dt>
+    <dd>{{ stock().quote.weekLow52 | currency:'USD':'symbol':'1.2-2' }}</dd>
+  </div>
+</dl>
+
+<div class="card__toggle" [class.card__toggle--on]="stock().active">
+  <span class="card__toggle-label card__toggle-label--on">ON</span>
+  <span class="card__toggle-label card__toggle-label--off">OFF</span>
+  <span class="card__toggle-knob"></span>
+</div>

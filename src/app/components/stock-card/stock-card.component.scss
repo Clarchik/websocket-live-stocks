@@ -1,0 +1,209 @@
+$green: #5bcb7a;
+$red: #f06b6b;
+$grey: #a8b2bf;
+$neutral: #7fb3d0;
+$text-dark: #1a2332;
+$text-muted: rgba(26, 35, 50, 0.6);
+
+:host {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: $neutral;
+  border-radius: 18px;
+  padding: 24px 20px 20px;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  text-align: center;
+  transition:
+    background-color 0.3s ease,
+    opacity 0.3s ease;
+  outline: none;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+
+  &:focus-visible {
+    outline: 3px solid rgba(255, 255, 255, 0.7);
+    outline-offset: 2px;
+  }
+
+  &.is-up {
+    background: $green;
+  }
+
+  &.is-down {
+    background: $red;
+  }
+
+  &.is-inactive {
+    background: $grey;
+    opacity: 0.75;
+  }
+}
+
+.card {
+  &__symbol {
+    margin: 0 0 4px;
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: $text-dark;
+    letter-spacing: 0.04em;
+    line-height: 1;
+  }
+
+  &__name {
+    margin: 0 0 14px;
+    font-size: 0.75rem;
+    color: $text-muted;
+    font-weight: 500;
+  }
+
+  &__price {
+    margin: 0 0 6px;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: $text-dark;
+    line-height: 1;
+  }
+
+  &__change {
+    margin: 0 0 14px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: $text-dark;
+
+    &--positive {
+      color: darken($green, 28%);
+    }
+
+    &--negative {
+      color: darken($red, 20%);
+    }
+  }
+
+  &__trade {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+    margin-bottom: 16px;
+  }
+
+  &__trade-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: $text-muted;
+  }
+
+  &__trade-time {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: $text-dark;
+  }
+
+  &__metrics {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 16px;
+    margin: 0 0 20px;
+    width: 100%;
+  }
+
+  &__metric {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+
+    dt {
+      font-size: 0.62rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: $text-muted;
+    }
+
+    dd {
+      margin: 0;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: $text-dark;
+    }
+
+    &--extended {
+      display: none;
+
+      @media (min-width: 768px) {
+        display: flex;
+      }
+    }
+  }
+
+  &__toggle {
+    position: relative;
+    width: 80px;
+    height: 34px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.55);
+    margin-top: auto;
+    flex-shrink: 0;
+    transition: background-color 0.25s ease;
+
+    &--on {
+      background: rgba(0, 0, 0, 0.72);
+    }
+  }
+
+  &__toggle-label {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+
+    &--on {
+      left: 10px;
+      opacity: 0;
+
+      .card__toggle--on & {
+        opacity: 1;
+      }
+    }
+
+    &--off {
+      right: 10px;
+      opacity: 1;
+
+      .card__toggle--on & {
+        opacity: 0;
+      }
+    }
+  }
+
+  &__toggle-knob {
+    position: absolute;
+    top: 50%;
+    left: 5px;
+    transform: translateY(-50%);
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.3);
+    transition:
+      left 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+      box-shadow 0.2s ease;
+
+    .card__toggle--on & {
+      left: 51px; // 80px wide - 24px knob - 5px right gap
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+    }
+  }
+}
