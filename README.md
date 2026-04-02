@@ -1,59 +1,129 @@
-# WebsocketsStocksFetch
+# Stocks Live — Real-Time Stock Dashboard
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.2.2.
+An Angular 21 app that streams live stock prices over WebSocket and displays them on an interactive dashboard.
 
-## Development server
+---
 
-To start a local development server, run:
+## Getting started
 
-```bash
-ng serve
-```
+### Prerequisites
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+- Node.js 20+
+- pnpm (`npm i -g pnpm`)
 
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+### Install dependencies
 
 ```bash
-ng generate component component-name
+pnpm install
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+### Run (two terminals)
+
+**Terminal 1 — mock WebSocket server:**
+```bash
+pnpm start:server
+```
+
+**Terminal 2 — Angular dev server:**
+```bash
+pnpm start
+```
+
+Then open `http://localhost:4200` in the browser.
+
+### Finnhub (live market data)
+
+Navigate to `http://localhost:4200/finnhub`. No extra server needed — the app connects directly to the Finnhub WebSocket API.
+
+> Requires a valid Finnhub API token set in `src/app/services/finnhub-stock.service.ts`.
+
+### Tests
 
 ```bash
-ng generate --help
+pnpm test
 ```
 
-## Building
+---
 
-To build the project run:
+## Architecture
 
-```bash
-ng build
+```
+src/app/
+├── models/           # Domain interfaces (StockState, StockUpdate, StockQuote)
+├── stores/           # StockStore — single source of truth for stock signal state
+├── services/         # MockStockService, FinnhubStockService
+├── interfaces/       # STOCK_SERVICE InjectionToken + StockService interface
+├── utils/            # connectWithRetry — WebSocket retry utility
+├── components/
+│   ├── dashboard/    # Dashboard page, reads from STOCK_SERVICE token
+│   └── stock-card/   # Single stock card component
+└── testing/          # Shared MockWebSocket used in unit tests
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+### Data flow
 
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
+```
+WebSocket server / Finnhub API
+        │  raw JSON messages
+        ▼
+MockStockService / FinnhubStockService
+        │  StockUpdate
+        ▼
+    StockStore  ──── signal<StockState[]>
+        │
+        ▼
+ DashboardComponent ──► StockCardComponent (×4)
 ```
 
-## Running end-to-end tests
+### Key design decisions
 
-For end-to-end (e2e) testing, run:
+**InjectionToken instead of abstract class**  
+`STOCK_SERVICE` is an `InjectionToken<StockService>`. The dashboard depends only on the token, not on any concrete class. Switching data sources is done at the route level:
 
-```bash
-ng e2e
+```typescript
+// app.routes.ts
+{ path: '',        providers: [{ provide: STOCK_SERVICE, useClass: MockStockService  }, StockStore] },
+{ path: 'finnhub', providers: [{ provide: STOCK_SERVICE, useClass: FinnhubStockService }, StockStore] },
 ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+**Composition over inheritance**  
+Both services compose `StockStore` via `inject()` instead of extending a base class. `StockStore` owns all signal state and mutation logic; services are responsible only for transport (WebSocket lifecycle, message parsing).
 
-## Additional Resources
+**`connectWithRetry` utility** (`src/app/utils/websocket-retry.ts`)  
+A pure function wrapping the native `WebSocket` API with exponential-backoff reconnection. Returns `{ send, destroy }` — no retry boilerplate inside services.
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+- Default: 3 attempts, delays of 1 s → 2 s → 4 s
+- A `destroyed` flag prevents retries after `ngOnDestroy`
+- `onerror` is a no-op; all retry logic lives in `onclose`
+
+**Signal-based state**  
+`StockStore` exposes a single `signal<StockState[]>`. Components read it directly — no `Observable` subscriptions, no manual `unsubscribe`. Angular's reactivity propagates changes automatically.
+
+---
+
+## Features
+
+### Two data sources
+
+| Route | Source | Notes |
+|---|---|---|
+| `/` | Local mock server (`server/server.js`) | Random price walk, one update every 1.5 s |
+| `/finnhub` | Finnhub WebSocket API | Real market data during trading hours |
+
+### Stock cards
+
+Each card shows:
+- **Symbol** and company name
+- **Current price** (large, centered)
+- **Price change** from session open — absolute and percentage
+- **Daily high / low**
+- **52-week high / low** — desktop only (≥ 768 px)
+- **Last trade time** — desktop only
+
+Card colour reflects the last price movement:
+| Colour | Meaning |
+|---|---|
+| Green | Price went up since last update |
+| Red | Price went down |
+| Blue/neutral | No change yet |
+| Grey | Card manually deactivated |
