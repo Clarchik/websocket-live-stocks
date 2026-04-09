@@ -19,7 +19,7 @@ export interface WebSocketConnection {
 
 export function connectWithRetry(
   url: string,
-  handlers: WebSocketRetryHandlers,
+  { onFailed, onMessage, onOpen, onRetrying }: WebSocketRetryHandlers,
   options: WebSocketRetryOptions = {},
 ): WebSocketConnection {
   const maxAttempts = options.maxAttempts ?? 3;
@@ -35,10 +35,10 @@ export function connectWithRetry(
 
     ws.onopen = () => {
       attempt = 0;
-      handlers.onOpen();
+      onOpen();
     };
 
-    ws.onmessage = ({ data }) => handlers.onMessage(data);
+    ws.onmessage = ({ data }) => onMessage(data);
 
     // onerror always fires before onclose — retry is handled in onclose
     ws.onerror = () => {};
@@ -48,10 +48,10 @@ export function connectWithRetry(
       attempt++;
       if (attempt <= maxAttempts) {
         const delay = baseDelayMs * Math.pow(2, attempt - 1); // 1s, 2s, 4s…
-        handlers.onRetrying(attempt, delay);
+        onRetrying(attempt, delay);
         retryTimeout = setTimeout(connect, delay);
       } else {
-        handlers.onFailed();
+        onFailed();
       }
     };
   }
